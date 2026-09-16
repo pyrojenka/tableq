@@ -12,11 +12,8 @@ def test_add_guest_gets_matched_to_a_free_table_immediately(client):
     assert guest['token']
 
 
-def test_add_guest_waits_when_no_table_fits(client, store):
-    from app.models import TableStatus
-
-    for table in store.tables.values():
-        table.status = TableStatus.OCCUPIED
+def test_add_guest_waits_when_no_table_fits(client, occupy_all_tables):
+    occupy_all_tables()
 
     response = client.post('/waitlist', json={'name': 'C', 'party_size': 2, 'phone': '3', 'notes': ''})
     guest = response.json()
@@ -25,11 +22,8 @@ def test_add_guest_waits_when_no_table_fits(client, store):
     assert guest['estimated_wait_minutes'] > 0
 
 
-def test_larger_party_is_prioritized_over_earlier_smaller_party(client, store):
-    from app.models import TableStatus
-
-    for table in store.tables.values():
-        table.status = TableStatus.OCCUPIED
+def test_larger_party_is_prioritized_over_earlier_smaller_party(client, occupy_all_tables):
+    occupy_all_tables()
 
     small = client.post(
         '/waitlist', json={'name': 'Small', 'party_size': 2, 'phone': '1', 'notes': ''}
@@ -69,11 +63,8 @@ def test_seat_guest_transitions_status(client):
     assert response.json()['status'] == 'seated'
 
 
-def test_seat_guest_not_ready_yet_is_conflict(client, store):
-    from app.models import TableStatus
-
-    for table in store.tables.values():
-        table.status = TableStatus.OCCUPIED
+def test_seat_guest_not_ready_yet_is_conflict(client, occupy_all_tables):
+    occupy_all_tables()
 
     waiting_guest = client.post(
         '/waitlist', json={'name': 'C', 'party_size': 2, 'phone': '3', 'notes': ''}
@@ -91,12 +82,8 @@ def test_seat_unknown_guest_is_404(client):
     assert response.status_code == 404
 
 
-def test_cancel_guest_frees_up_the_table_for_the_next_waiting_guest(client, store):
-    from app.models import TableStatus
-
-    for table_id, table in store.tables.items():
-        if table_id != 't1':
-            table.status = TableStatus.OCCUPIED
+def test_cancel_guest_frees_up_the_table_for_the_next_waiting_guest(client, occupy_all_tables):
+    occupy_all_tables(except_ids=('t1',))
 
     first = client.post(
         '/waitlist', json={'name': 'First', 'party_size': 2, 'phone': '1', 'notes': ''}
