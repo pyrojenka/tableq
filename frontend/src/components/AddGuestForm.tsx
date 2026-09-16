@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { addGuest } from '../api/mockApi'
+import { addGuest } from '../api/client'
 
 export function AddGuestForm() {
   const [name, setName] = useState('')

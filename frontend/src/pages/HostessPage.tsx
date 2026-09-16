@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react'
-import { getStats, getTables, getWaitlist } from '../api/mockApi'
+import { getStats, getTables, getWaitlist } from '../api/client'
 import { AddGuestForm } from '../components/AddGuestForm'
 import { StatsPanel } from '../components/StatsPanel'
 import { TablesBoard } from '../components/TablesBoard'
 import { WaitlistTable } from '../components/WaitlistTable'
-import { useMockRefresh } from '../hooks/useMockRefresh'
+import { useApiRefresh } from '../hooks/useApiRefresh'
 import type { DailyStats, RestaurantTable, WaitlistGuest } from '../types'
 
 export function HostessPage() {
-  const tick = useMockRefresh()
+  const tick = useApiRefresh()
   const [guests, setGuests] = useState<WaitlistGuest[]>([])
   const [tables, setTables] = useState<RestaurantTable[]>([])
   const [stats, setStats] = useState<DailyStats>({ totalSeated: 0, totalNoShow: 0, averageWaitMinutes: 15 })

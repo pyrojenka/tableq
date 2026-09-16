@@ -1,4 +1,4 @@
-import { confirmTableFree } from '../api/mockApi'
+import { confirmTableFree } from '../api/client'
 import type { RestaurantTable } from '../types'
 
 const STATUS_STYLE: Record<RestaurantTable['status'], string> = {

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { cancelGuest, seatGuest } from '../api/mockApi'
+import { cancelGuest, seatGuest } from '../api/client'
 import type { WaitlistGuest } from '../types'
 import { GuestQrModal } from './GuestQrModal'
 

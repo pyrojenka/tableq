@@ -1,8 +1,14 @@
+import asyncio
+
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.models import AddGuestRequest, DailyStats, Table, WaitlistGuest
 from app.store import GuestNotFoundError, GuestNotReadyError, TableNotFoundError, WaitlistStore, get_store
+
+# Meal duration is accelerated for the demo so the "table likely free" reminder
+# is visible without waiting real minutes.
+MOCK_MEAL_DURATION_SECONDS = 20
 
 app = FastAPI(title='TableQ API')
 
@@ -12,6 +18,11 @@ app.add_middleware(
     allow_methods=['*'],
     allow_headers=['*'],
 )
+
+
+async def _schedule_pending_free(store: WaitlistStore, table_id: str) -> None:
+    await asyncio.sleep(MOCK_MEAL_DURATION_SECONDS)
+    store.mark_table_pending_free(table_id)
 
 
 @app.get('/tables', response_model=list[Table])
@@ -40,13 +51,18 @@ def add_guest(request: AddGuestRequest, store: WaitlistStore = Depends(get_store
 
 
 @app.post('/waitlist/{guest_id}/seat', response_model=WaitlistGuest)
-def seat_guest(guest_id: str, store: WaitlistStore = Depends(get_store)):
+async def seat_guest(guest_id: str, store: WaitlistStore = Depends(get_store)):
     try:
-        return store.seat_guest(guest_id)
+        guest = store.seat_guest(guest_id)
     except GuestNotFoundError:
         raise HTTPException(status_code=404, detail='Guest not found')
     except GuestNotReadyError:
         raise HTTPException(status_code=409, detail='Guest is not in table_ready status')
+
+    if guest.assigned_table_id:
+        asyncio.create_task(_schedule_pending_free(store, guest.assigned_table_id))
+
+    return guest
 
 
 @app.post('/waitlist/{guest_id}/cancel', response_model=WaitlistGuest)

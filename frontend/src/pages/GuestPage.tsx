@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { getGuestByToken } from '../api/mockApi'
-import { useMockRefresh } from '../hooks/useMockRefresh'
+import { getGuestByToken } from '../api/client'
+import { useApiRefresh } from '../hooks/useApiRefresh'
 import type { WaitlistGuest } from '../types'
 
 const STATUS_COPY: Record<WaitlistGuest['status'], { title: string; subtitle: string; color: string }> = {
@@ -13,7 +13,7 @@ const STATUS_COPY: Record<WaitlistGuest['status'], { title: string; subtitle: st
 
 export function GuestPage() {
   const { token } = useParams<{ token: string }>()
-  const tick = useMockRefresh()
+  const tick = useApiRefresh()
   const [guest, setGuest] = useState<WaitlistGuest | null | undefined>(undefined)
 
   useEffect(() => {

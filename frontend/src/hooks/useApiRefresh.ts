@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { subscribe } from '../api/mockApi'
+import { subscribe } from '../api/client'
 
-// Bumps a counter whenever the mock backend changes so views can refetch.
-export function useMockRefresh() {
+// Bumps a counter on a poll interval (and right after any mutation) so
+// views know to refetch from the backend.
+export function useApiRefresh() {
   const [tick, setTick] = useState(0)
 
   useEffect(() => {
