@@ -1,0 +1,225 @@
+openapi: 3.1.0
+info:
+  title: TableQ API
+  version: '1.0'
+  description: Restaurant waitlist manager backend.
+
+paths:
+  /tables:
+    get:
+      summary: List all tables
+      operationId: listTables
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Table'
+
+  /tables/{table_id}/confirm-free:
+    post:
+      summary: Confirm a table is free again (after the pending-free reminder)
+      operationId: confirmTableFree
+      parameters:
+        - $ref: '#/components/parameters/TableId'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Table'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /waitlist:
+    get:
+      summary: List all waitlist entries (waiting, table_ready, seated, cancelled_no_show)
+      operationId: listWaitlist
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/WaitlistGuest'
+    post:
+      summary: Add a guest to the waitlist
+      operationId: addGuest
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddGuestRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WaitlistGuest'
+
+  /waitlist/{guest_id}/seat:
+    post:
+      summary: Seat a guest whose table is ready
+      operationId: seatGuest
+      parameters:
+        - $ref: '#/components/parameters/GuestId'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WaitlistGuest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Guest is not in table_ready status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /waitlist/{guest_id}/cancel:
+    post:
+      summary: Cancel a waitlist entry (or mark as no-show)
+      operationId: cancelGuest
+      parameters:
+        - $ref: '#/components/parameters/GuestId'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WaitlistGuest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /guest/{token}:
+    get:
+      summary: Look up a waitlist entry by its guest-facing token (read-only)
+      operationId: getGuestByToken
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WaitlistGuest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /stats:
+    get:
+      summary: Daily stats (seated count, no-show count, average wait)
+      operationId: getStats
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DailyStats'
+
+components:
+  parameters:
+    GuestId:
+      name: guest_id
+      in: path
+      required: true
+      schema:
+        type: string
+    TableId:
+      name: table_id
+      in: path
+      required: true
+      schema:
+        type: string
+
+  responses:
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+    GuestStatus:
+      type: string
+      enum: [waiting, table_ready, seated, cancelled_no_show]
+
+    TableStatus:
+      type: string
+      enum: [free, occupied, pending_free]
+
+    Table:
+      type: object
+      required: [id, name, capacity, status]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        capacity: { type: integer }
+        status: { $ref: '#/components/schemas/TableStatus' }
+        occupied_by_guest_id: { type: string, nullable: true }
+
+    WaitlistGuest:
+      type: object
+      required:
+        - id
+        - token
+        - name
+        - party_size
+        - phone
+        - notes
+        - status
+        - created_at
+        - estimated_wait_minutes
+      properties:
+        id: { type: string }
+        token: { type: string, description: Used in the guest-facing link/QR code }
+        name: { type: string }
+        party_size: { type: integer, minimum: 1 }
+        phone: { type: string }
+        notes: { type: string }
+        status: { $ref: '#/components/schemas/GuestStatus' }
+        created_at: { type: string, format: date-time }
+        estimated_wait_minutes: { type: integer }
+        assigned_table_id: { type: string, nullable: true }
+
+    AddGuestRequest:
+      type: object
+      required: [name, party_size, phone]
+      properties:
+        name: { type: string }
+        party_size: { type: integer, minimum: 1 }
+        phone: { type: string }
+        notes: { type: string, default: '' }
+
+    DailyStats:
+      type: object
+      required: [total_seated, total_no_show, average_wait_minutes]
+      properties:
+        total_seated: { type: integer }
+        total_no_show: { type: integer }
+        average_wait_minutes: { type: integer }
+
+    Error:
+      type: object
+      required: [detail]
+      properties:
+        detail: { type: string }
