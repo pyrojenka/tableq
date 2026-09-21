@@ -4,6 +4,10 @@ info:
   version: '1.0'
   description: Restaurant waitlist manager backend.
 
+servers:
+  - url: /api
+    description: All paths below are relative to this prefix, e.g. GET /api/tables.
+
 paths:
   /tables:
     get:

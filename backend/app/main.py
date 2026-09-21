@@ -1,7 +1,10 @@
 import asyncio
+from pathlib import Path
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import APIRouter, Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 
 import app.db_models  # noqa: F401  registers models on Base before create_all
@@ -13,6 +16,8 @@ from app.store import GuestNotFoundError, GuestNotReadyError, TableNotFoundError
 # is visible without waiting real minutes.
 MOCK_MEAL_DURATION_SECONDS = 20
 
+STATIC_DIR = Path(__file__).parent / 'static'
+
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title='TableQ API')
@@ -23,6 +28,8 @@ app.add_middleware(
     allow_methods=['*'],
     allow_headers=['*'],
 )
+
+api = APIRouter(prefix='/api')
 
 
 def get_store(db: Session = Depends(get_db)) -> WaitlistStore:
@@ -38,12 +45,12 @@ async def _schedule_pending_free(table_id: str) -> None:
         db.close()
 
 
-@app.get('/tables', response_model=list[Table])
+@api.get('/tables', response_model=list[Table])
 def list_tables(store: WaitlistStore = Depends(get_store)):
     return store.list_tables()
 
 
-@app.post('/tables/{table_id}/confirm-free', response_model=Table)
+@api.post('/tables/{table_id}/confirm-free', response_model=Table)
 def confirm_table_free(table_id: str, store: WaitlistStore = Depends(get_store)):
     try:
         return store.confirm_table_free(table_id)
@@ -51,19 +58,19 @@ def confirm_table_free(table_id: str, store: WaitlistStore = Depends(get_store))
         raise HTTPException(status_code=404, detail='Table not found')
 
 
-@app.get('/waitlist', response_model=list[WaitlistGuest])
+@api.get('/waitlist', response_model=list[WaitlistGuest])
 def list_waitlist(store: WaitlistStore = Depends(get_store)):
     return store.list_waitlist()
 
 
-@app.post('/waitlist', response_model=WaitlistGuest, status_code=201)
+@api.post('/waitlist', response_model=WaitlistGuest, status_code=201)
 def add_guest(request: AddGuestRequest, store: WaitlistStore = Depends(get_store)):
     return store.add_guest(
         name=request.name, party_size=request.party_size, phone=request.phone, notes=request.notes
     )
 
 
-@app.post('/waitlist/{guest_id}/seat', response_model=WaitlistGuest)
+@api.post('/waitlist/{guest_id}/seat', response_model=WaitlistGuest)
 async def seat_guest(guest_id: str, store: WaitlistStore = Depends(get_store)):
     try:
         guest = store.seat_guest(guest_id)
@@ -78,7 +85,7 @@ async def seat_guest(guest_id: str, store: WaitlistStore = Depends(get_store)):
     return guest
 
 
-@app.post('/waitlist/{guest_id}/cancel', response_model=WaitlistGuest)
+@api.post('/waitlist/{guest_id}/cancel', response_model=WaitlistGuest)
 def cancel_guest(guest_id: str, store: WaitlistStore = Depends(get_store)):
     try:
         return store.cancel_guest(guest_id)
@@ -86,7 +93,7 @@ def cancel_guest(guest_id: str, store: WaitlistStore = Depends(get_store)):
         raise HTTPException(status_code=404, detail='Guest not found')
 
 
-@app.get('/guest/{token}', response_model=WaitlistGuest)
+@api.get('/guest/{token}', response_model=WaitlistGuest)
 def get_guest_by_token(token: str, store: WaitlistStore = Depends(get_store)):
     guest = store.get_guest_by_token(token)
     if guest is None:
@@ -94,6 +101,23 @@ def get_guest_by_token(token: str, store: WaitlistStore = Depends(get_store)):
     return guest
 
 
-@app.get('/stats', response_model=DailyStats)
+@api.get('/stats', response_model=DailyStats)
 def get_stats(store: WaitlistStore = Depends(get_store)):
     return store.get_stats()
+
+
+app.include_router(api)
+
+# In the Docker image, the frontend is built into app/static and served
+# from here so the backend is the single thing that needs to run. In local
+# dev (no static/ directory), this is skipped and Vite serves the frontend
+# on its own port instead.
+if STATIC_DIR.exists():
+    app.mount('/assets', StaticFiles(directory=STATIC_DIR / 'assets'), name='assets')
+
+    @app.get('/{full_path:path}', include_in_schema=False)
+    async def serve_frontend(full_path: str):
+        candidate = STATIC_DIR / full_path
+        if full_path and candidate.is_file():
+            return FileResponse(candidate)
+        return FileResponse(STATIC_DIR / 'index.html')

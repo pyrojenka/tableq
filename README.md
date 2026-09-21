@@ -37,6 +37,22 @@ cd backend
 uv run pytest -v
 ```
 
+All API routes are under `/api` (e.g. `GET /api/tables`); anything else is
+served as the frontend.
+
+## Running with Docker
+
+Builds the frontend, then bundles it with the backend into a single image
+that serves both:
+
+```bash
+docker build -t tableq .
+docker run -p 8000:8000 -v tableq-data:/data tableq
+```
+
+Open http://localhost:8000. The SQLite file lives at `/data/tableq.db`
+inside the container; the `-v` flag persists it across restarts.
+
 ## Status
 
 Frontend, backend, and database are wired up end-to-end. Built as part of
