@@ -10,8 +10,8 @@ See [_docs/specs.md](_docs/specs.md) for the full specification and
 
 - Backend: FastAPI (Python, `uv`)
 - Frontend: React + Vite + TypeScript, Tailwind CSS
-- Database: SQLite via SQLAlchemy (database-agnostic — swap `DATABASE_URL`
-  for any SQLAlchemy-supported database)
+- Database: SQLAlchemy, database-agnostic — SQLite by default, Postgres
+  supported out of the box (see `docker-compose.yml`)
 
 ## Running locally
 
