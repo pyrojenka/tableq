@@ -1,0 +1,27 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: tableq
+      POSTGRES_PASSWORD: tableq
+      POSTGRES_DB: tableq
+    volumes:
+      - tableq-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U tableq']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    ports:
+      - '8000:8000'
+    environment:
+      DATABASE_URL: postgresql+psycopg://tableq:tableq@db:5432/tableq
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  tableq-postgres-data:

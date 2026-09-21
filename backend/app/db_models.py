@@ -26,7 +26,10 @@ class GuestRow(Base):
     phone: Mapped[str] = mapped_column(String)
     notes: Mapped[str] = mapped_column(String, default='')
     status: Mapped[str] = mapped_column(String, default='waiting')
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    # Deliberately timezone-naive (always UTC, see app.store._utcnow): a
+    # tz-aware column round-trips as naive on SQLite but tz-aware on
+    # Postgres, so staying naive everywhere keeps both backends consistent.
+    created_at: Mapped[datetime] = mapped_column(DateTime)
     estimated_wait_minutes: Mapped[int] = mapped_column(Integer)
     assigned_table_id: Mapped[str | None] = mapped_column(String, nullable=True)
 

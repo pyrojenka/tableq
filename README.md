@@ -53,6 +53,19 @@ docker run -p 8000:8000 -v tableq-data:/data tableq
 Open http://localhost:8000. The SQLite file lives at `/data/tableq.db`
 inside the container; the `-v` flag persists it across restarts.
 
+### With Postgres
+
+`docker-compose.yml` runs the same image against a real Postgres instead:
+
+```bash
+docker compose up --build
+```
+
+This sets `DATABASE_URL=postgresql+psycopg://tableq:tableq@db:5432/tableq`
+for the app service. To point any backend run at Postgres yourself (e.g.
+outside Docker), set `DATABASE_URL` to a `postgresql+psycopg://` URL —
+`app/store.py` doesn't change either way.
+
 ## Status
 
 Frontend, backend, and database are wired up end-to-end. Built as part of
